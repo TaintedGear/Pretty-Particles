@@ -15,7 +15,7 @@ void DebugCamera::Initialise(XMFLOAT3 position, float yaw, float pitch, float ro
 		fov, aspectRatio, target);
 }
 
-void DebugCamera::Update(float dt, DirectInput* dInput)
+void DebugCamera::Update(float dt, DirectInput* dInput, float windowWidth, float windowHeight)
 {
 	if(dInput->GetKeyboardState(DIK_UP))
 	{
@@ -45,8 +45,8 @@ void DebugCamera::Update(float dt, DirectInput* dInput)
 		MoveCamera(vMove);
 	}
 
-	m_aimX = m_mouseSens * (dInput->GetMouseX() / 1024.0f) * dt;
-	m_aimY = -m_mouseSens * (dInput->GetMouseY() / 800.0f) * dt;
+	m_aimX = m_mouseSens * (dInput->GetMouseX() / 1024) * dt;
+	m_aimY = -m_mouseSens * (dInput->GetMouseY() / 800) * dt;
 
 	RotPitch(m_aimY);
 	RotYaw(m_aimX);

@@ -42,7 +42,7 @@ bool System::Initialise(HINSTANCE hInstance, HINSTANCE pInstance,
 	}
 
 	//Initalise D3D
-	if(!m_dxGraphics.InitialiseDX(m_hwnd,1024, 800))
+	if(!m_dxGraphics.InitialiseDX(m_hwnd, 1024, 800))
 	{
 		MessageBoxA(NULL, "Failed to initialise D3D", "ERROR", MB_OK | MB_ICONERROR);
 		return false;

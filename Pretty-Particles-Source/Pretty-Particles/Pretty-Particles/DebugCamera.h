@@ -12,7 +12,7 @@ class DebugCamera : public Camera
 public:
 	DebugCamera();
 	~DebugCamera();
-	void Update(float dt, DirectInput* dInput);
+	void Update(float dt, DirectInput* dInput, float windowWidth, float windowHeight);
     void Initialise(XMFLOAT3 position, float yaw, float pitch, float roll,
 		float fov, float aspectRatio, XMFLOAT3 target);
 

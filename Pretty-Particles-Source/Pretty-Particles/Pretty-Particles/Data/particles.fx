@@ -1,6 +1,3 @@
-//DEFINES
-//float G = 10.0f;
-
 //CBUFFERS
 cbuffer cbWorld : register(b0)
 {
@@ -15,11 +12,17 @@ cbuffer cbProj : register(b2)
 	float4x4 proj;
 };
 
-//cbuffer cbMassPoint : register(b3)
-//{
-//	//X, Y, Z, MASS
-//	float4 massPoint;
-//};
+cbuffer cbMassPoint : register(b3)
+{
+	float3 massPos;
+	float pointMass;
+	float particleMass;
+	float dragForce;
+	float gravityConst;
+	float forceDistance;
+	float dt;
+	float3 pad;
+};
 
 //STRUCTS
 struct VS_IN
@@ -72,48 +75,50 @@ GS_IN VS_MAIN_SO(VS_IN vIn)
 {
 	GS_IN gIn;
 
+	gIn.pos = vIn.pos;
 	gIn.vel = vIn.vel;
 	gIn.col = vIn.col;
 
-	//Transform into world space
-	gIn.pos = mul(vIn.pos, world);
+	//Find the distance between the particle position to the mass point position
+	float r = distance((float3)gIn.pos, massPos);
+	r = r*r;
 
-	////Find the distance between the particle position to the mass point position
-	//float r = distance((float3)gIn.pos, (float3)massPoint);
-	//r = r*r;
+	//1.0f is the mass of the particles
+	float m = particleMass * pointMass;
 
-	////1.0f is the mass of the particles
-	//float m = 1.0f * massPoint.w;
+	float f = 0.0f;
 
-	////newtons universal law of gravitation
-	//float f = G * ( m / r );
+	//newtons universal law of gravitation
+	if (r >= forceDistance)
+	{
+		
+		f = gravityConst * (m / r);
+	}
 
-	////direction towards masspoint
-	//float3 dir = (float3)massPoint - (float3)gIn.pos;
-	//dir = normalize(dir);
+	//direction towards masspoint
+	float3 dir = massPos - (float3)gIn.pos;
+	dir = normalize(dir);
 
-	////verlet physics step
-	//float3 acc = float3(0.0f, 0.0f, 0.0f);
-	//	float3 newVel = float3(0.0f, 0.0f, 0.0f);
-	//	float3 newPos = float3(0.0f, 0.0f, 0.0f);
-	//	float3 force = float3(0.0f, 0.0f, 0.0f);
+	//verlet physics step
+	float3 acc = float3(0.0f, 0.0f, 0.0f);
+	float3 newVel = float3(0.0f, 0.0f, 0.0f);
+	float3 newPos = float3(0.0f, 0.0f, 0.0f);
+	float3 force = float3(0.0f, 0.0f, 0.0f);
 
-	//	force = dir * f;
-	//acc = force / 1.0f;
-	//newVel = vIn.vel + acc;
-	//newPos = (float3)vIn.pos + (vIn.vel + newVel) * 0.5f;
+	force = dir * f;
+	acc = force / 1.0f;
+	newVel = vIn.vel + acc;
 
-	//gIn.pos = (float4(newPos, 1.0f));
-	//gIn.vel = newVel;
+	//Apply resistance
+	newVel = newVel * dragForce;
 
-	////Set the colour to that of the vel
-	//gIn.col = (float4(gIn.vel, 1.0f));
+	newPos = (float3)vIn.pos + (vIn.vel + newVel) * 0.5f /** dt*/;
 
-	// calculate the view space position
-	gIn.pos = mul(gIn.pos, view);
-	gIn.pos = mul(gIn.pos, proj);
+	gIn.pos = (float4(newPos, 1.0f));
+	gIn.vel = newVel;
 
-	gIn.col = gIn.pos;
+	//Set the colour to that of the vel
+	gIn.col = float4(1.0f, 1.0f, 1.0f, 1.0f) + (float4(gIn.vel, 1.0f));
 
 	return gIn;
 }

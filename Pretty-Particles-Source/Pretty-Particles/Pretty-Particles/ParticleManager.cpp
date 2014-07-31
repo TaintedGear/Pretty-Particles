@@ -2,17 +2,20 @@
 
 
 ParticleManager::ParticleManager() 
-: m_particleAmount(100000),
+: m_particleAmount(3000000),
 m_vBuffer(0),
+m_vStream(0),
 m_inputLayout(0),
+m_pointBuffer(0),
 m_camWorldBuffer(0),
 m_camViewBuffer(0),
 m_camProjBuffer(0),
 m_vBlob(0),
 m_vShader(0),
 m_pShader(0),
-m_spacing(1.0f),
-m_point(XMLoadFloat3(&XMFLOAT3(0.0f, 0.0f, 0.0f)))
+m_vUpdate(0),
+m_gUpdate(0),
+m_spacing(1.0f)
 {
 }
 
@@ -51,51 +54,48 @@ void ParticleManager::UpdateParticles(float dt, DxGraphics* pDxGraphics, Camera&
 
 	m_worldMat = rotMat * scaleMat * transMat;
 
-	//cam.CalculateViewMatrix();
+	cam.CalculateViewMatrix();
 
-	//// stream out the particles which runs through the physics
-	//XMMATRIX tWorld = XMMatrixTranspose(m_worldMat);
-	//XMMATRIX tView = XMMatrixTranspose(cam.GetViewMatrix());
-	//XMMATRIX tProj = XMMatrixTranspose(cam.GetProjMatrix());
+	// stream out the particles which runs through the physics
+	XMMATRIX tWorld = XMMatrixTranspose(m_worldMat);
+	XMMATRIX tView = XMMatrixTranspose(cam.GetViewMatrix());
+	XMMATRIX tProj = XMMatrixTranspose(cam.GetProjMatrix());
 
-	//ID3D11DeviceContext* pCon = pDxGraphics->GetImmediateContext();
+	m_massPoint.dt = dt;
 
-	////Set the stream out buffer
-	//UINT offsetSO[1] = { 0 };
-	//pCon->SOSetTargets(1, &m_vStream, offsetSO);
+	ID3D11DeviceContext* pCon = pDxGraphics->GetImmediateContext();
 
-	//UINT stride = sizeof(Particle);
-	//UINT offset = 0;
+	// Set the stream out buffer
+	UINT offsetSO[1] = { 0 };
+	pCon->SOSetTargets(1, &m_vStream, offsetSO);
 
-	//pCon->IASetVertexBuffers(0, 1, &m_vBuffer, &stride, &offset);
-	//pCon->IASetInputLayout(m_inputLayout);
-	//pCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	UINT stride = sizeof(Particle);
+	UINT offset = 0;
 
-	//pCon->VSSetShader(m_vUpdate, 0, 0);
-	//pCon->GSSetShader(m_gUpdate, 0, 0);
-	//pCon->PSSetShader(NULL, 0, 0);
+	pCon->IASetVertexBuffers(0, 1, &m_vBuffer, &stride, &offset);
+	pCon->IASetInputLayout(m_inputLayout);
+	pCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	////Update the cBuffer
-	//pCon->UpdateSubresource(m_camWorldBuffer, 0, NULL, &tWorld, 0, 0);
-	//pCon->UpdateSubresource(m_camViewBuffer, 0, NULL, &tView, 0, 0);
-	//pCon->UpdateSubresource(m_camProjBuffer, 0, NULL, &tProj, 0, 0);
-	////pCon->UpdateSubresource(m_pointBuffer, 0, NULL, &m_point, 0, 0);
+	pCon->VSSetShader(m_vUpdate, 0, 0);
+	pCon->GSSetShader(m_gUpdate, 0, 0);
+	pCon->PSSetShader(NULL, 0, 0);
 
-	//pCon->VSSetConstantBuffers(0, 1, &m_camWorldBuffer);
-	//pCon->VSSetConstantBuffers(1, 1, &m_camViewBuffer);
-	//pCon->VSSetConstantBuffers(2, 1, &m_camProjBuffer);
-	////pCon->VSSetConstantBuffers(3, 1, &m_pointBuffer);
+	//// Update the cBuffer
+	pCon->UpdateSubresource(m_pointBuffer, 0, NULL, &m_massPoint, 0, 0);
 
-	//pCon->Draw(m_particleList.size(), 0);
+	pCon->VSSetConstantBuffers(3, 1, &m_pointBuffer);
 
-	//pCon->VSSetShader(NULL, 0, 0);
-	//pCon->GSSetShader(NULL, 0, 0);
-	//pCon->PSSetShader(NULL, 0, 0);
+	pCon->Draw(m_particleList.size(), 0);
 
-	////unbind the SO
-	//ID3D11Buffer* bufferArray[1] = { 0 };
-	//pCon->SOSetTargets(1, bufferArray, offsetSO);
-	//std::swap(m_vStream, m_vBuffer);
+	pCon->VSSetShader(NULL, 0, 0);
+	pCon->GSSetShader(NULL, 0, 0);
+	pCon->PSSetShader(NULL, 0, 0);
+
+	// Unbind the SO
+	ID3D11Buffer* bufferArray[1] = { 0 };
+	pCon->SOSetTargets(1, bufferArray, offsetSO);
+	
+	std::swap(m_vStream, m_vBuffer);
 }
 
 void ParticleManager::RenderParticles(DxGraphics* pDxGraphics, Camera& cam)
@@ -136,11 +136,14 @@ void ParticleManager::RenderParticles(DxGraphics* pDxGraphics, Camera& cam)
 void ParticleManager::ShutdownParticles()
 {
 	if (m_vBuffer) m_vBuffer->Release();
-	if (m_pointBuffer) m_pointBuffer->Release();
+	if (m_vStream) m_vStream->Release();
 	if (m_inputLayout) m_inputLayout->Release();
 	if (m_vBlob) m_vBlob->Release();
 	if (m_vShader) m_vShader->Release();
 	if (m_pShader) m_pShader->Release();
+	if (m_vUpdate) m_vUpdate->Release();
+	if (m_gUpdate) m_gUpdate->Release();
+	if (m_pointBuffer) m_pointBuffer->Release();
 	if (m_camWorldBuffer) m_camWorldBuffer->Release();
 	if (m_camViewBuffer) m_camViewBuffer->Release();
 	if (m_camProjBuffer) m_camProjBuffer->Release();
@@ -159,7 +162,7 @@ bool ParticleManager::BuildVertexList()
 			{
 				XMFLOAT3 pos = XMFLOAT3(0.0f, 0.0f, 0.0f);
 				XMFLOAT3 vel = XMFLOAT3(0.0f, 0.0f, 0.0f);
-				XMFLOAT4 col = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+				XMFLOAT4 col = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 				Particle newParticle;
 
@@ -176,6 +179,16 @@ bool ParticleManager::BuildVertexList()
 			}
 		}
 	}
+
+	//TEMP INIT OF THE MASS POINT
+	float midPoint = (amountCubed / 2) * m_spacing;
+	m_massPoint.pos = XMFLOAT3(midPoint, midPoint, midPoint);
+	m_massPoint.pointMass = 10.0f;
+	m_massPoint.particleMass = 1.0f;
+	m_massPoint.dragForce = 0.997f;
+	m_massPoint.forceDistance = 500.0f;
+	m_massPoint.gravityConst = 16.6738480f;
+	m_massPoint.dt = 0.0f;
 
 	return true;
 }
@@ -201,7 +214,7 @@ bool ParticleManager::BuildBuffers(ID3D11Device* pDevice)
 	}
 
 	//Create the stream out buffer
-	hr = pDevice->CreateBuffer(&vbd, &vInit, &m_vStream);
+	hr = pDevice->CreateBuffer(&vbd, NULL, &m_vStream);
 	if (FAILED(hr))
 	{
 		return false;
@@ -211,7 +224,7 @@ bool ParticleManager::BuildBuffers(ID3D11Device* pDevice)
 	D3D11_BUFFER_DESC cbd;
 	ZeroMemory(&cbd, sizeof(D3D11_BUFFER_DESC));
 	cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbd.ByteWidth = sizeof(XMVECTOR);
+	cbd.ByteWidth = sizeof(MassPoint);
 	cbd.Usage = D3D11_USAGE_DEFAULT;
 
 	hr = pDevice->CreateBuffer(&cbd, NULL, &m_pointBuffer);
@@ -323,12 +336,10 @@ bool ParticleManager::BuildShaders(ID3D11Device* pDevice)
 	D3D11_SO_DECLARATION_ENTRY dso[] = {
 		{ 0, "SV_POSITION", 0, 0, 3, 0 },
 		{ 0, "VELOCITY", 0, 0, 3, 0 },
-		{ 0, "COLOR", 0, 0, 3, 0 }
+		{ 0, "COLOR", 0, 0, 4, 0 }
 	};
 
-	UINT stride = 9 * sizeof(float);
-	//UINT stride = sizeof(Particle);
-	UINT numStride = m_particleList.size();
+	UINT stride = sizeof(Particle);
 	UINT elems = sizeof(dso) / sizeof(D3D11_SO_DECLARATION_ENTRY);
 
 	hr = pDevice->CreateGeometryShaderWithStreamOutput(
@@ -399,4 +410,31 @@ bool ParticleManager::CompileShader(ID3DBlob** shader, string filename, string e
 	}
 
 	return true;
+}
+
+MassPoint ParticleManager::GetMassPoint()
+{
+	return m_massPoint;
+}
+void ParticleManager::SetMassPoint(MassPoint massPoint)
+{
+	m_massPoint = massPoint;
+}
+float ParticleManager::GetParticleAmount()
+{
+	return m_particleList.size();
+}
+// Only refers to the center pos at its starting point
+XMFLOAT3 ParticleManager::GetParticleCenterPos()
+{
+	int amountCubed = 0;
+	amountCubed = pow(m_particleAmount, 1.0f / 3.0f);
+
+	XMFLOAT3 centerPos = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+	float midPoint = (amountCubed / 2) * m_spacing;
+
+	centerPos = XMFLOAT3(midPoint, midPoint, midPoint);
+
+	return centerPos;
 }

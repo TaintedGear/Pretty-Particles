@@ -18,6 +18,20 @@ struct Particle
 	XMFLOAT4 colour;
 };
 
+struct MassPoint
+{
+	XMFLOAT3 pos;
+	float pointMass;
+
+	float particleMass;
+	float dragForce;
+	float gravityConst;
+	float forceDistance;
+
+	float dt;
+	XMFLOAT3 pad;
+};
+
 class ParticleManager
 {
 public:
@@ -28,6 +42,11 @@ public:
 	void UpdateParticles(float dt, DxGraphics* pDxGraphics, Camera& cam);
 	void RenderParticles(DxGraphics* pDxGraphics, Camera& cam);
 	void ShutdownParticles();
+
+	float GetParticleAmount();
+	XMFLOAT3 GetParticleCenterPos();
+	MassPoint GetMassPoint();
+	void SetMassPoint(MassPoint massPoint);
 
 private:
 	bool BuildVertexList();
@@ -40,7 +59,7 @@ private:
 
 	unsigned int m_particleAmount;
 	float m_spacing;
-	XMVECTOR m_point;
+	MassPoint m_massPoint;
 
 	//Vector for all the particles / vertices
 	vector<Particle> m_particleList;

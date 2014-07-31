@@ -26,7 +26,8 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must ends with two \r.
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -34,3 +35,8 @@ Icon
 # Files that might appear on external disk
 .Spotlight-V100
 .Trashes
+
+Pretty-Particles-Source/Pretty-Particles/Pretty-Particles.v12.suo
+Pretty-Particles-Source/Pretty-Particles/Pretty-Particles/Pretty-Particles.vcxproj.user
+Pretty-Particles-Source/Pretty-Particles/Pretty-Particles/Pretty-Particles.vcxproj.filters
+Pretty-Particles-Source/Pretty-Particles/Pretty-Particles/Pretty-Particles.vcxproj

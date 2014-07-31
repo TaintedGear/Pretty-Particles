@@ -80,8 +80,11 @@ bool Game::LoadContent()
 		return false;
 	}
 
-	m_cam.Initialise(XMFLOAT3(0.0f, 0.0f, 10.0f), 0.0f, 0.0f, 0.0f, XM_PIDIV4,
-		m_system.GetAspectRatio(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+	XMFLOAT3 centerPos = m_particleManager.GetParticleCenterPos();
+	centerPos.z = -300.0f;
+
+	m_cam.Initialise(centerPos, 0.0f, 0.0f, 0.0f, XM_PIDIV4,
+		m_system.GetAspectRatio(), m_particleManager.GetParticleCenterPos());
 
 	return true;
 }
@@ -99,7 +102,46 @@ void Game::Update(float dt)
 		m_escape = true;
 	}
 
-	m_cam.Update(dt, m_system.GetDirectInput());
+	//Move the mass point in the x and y
+	MassPoint newPoint = m_particleManager.GetMassPoint();
+
+	float pointSpeed = 30.0f;
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_A))
+	{
+		newPoint.pos.x -= pointSpeed * dt;
+	}
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_D))
+	{
+		newPoint.pos.x += pointSpeed * dt;
+	}
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_W))
+	{
+		newPoint.pos.y += pointSpeed * dt;
+	}
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_S))
+	{
+		newPoint.pos.y -= pointSpeed * dt;
+	}
+
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_Q))
+	{
+		newPoint.pointMass += 1.0f * dt;
+	}
+	if (m_system.GetDirectInput()->GetKeyboardState(DIK_E))
+	{
+		newPoint.pointMass -= 1.0f * dt;
+	}
+
+	if (newPoint.pointMass < 0.1f)
+	{
+		newPoint.pointMass = 0.1f;
+	}
+
+	m_particleManager.SetMassPoint(newPoint);
+
+	//m_cam.Update(dt, m_system.GetDirectInput(), m_system.GetWindowWidth(), m_system.GetWindowHeight());
+
+	m_cam.Update(dt);
 
 	m_particleManager.UpdateParticles(dt, m_system.GetDX(), m_cam);
 }

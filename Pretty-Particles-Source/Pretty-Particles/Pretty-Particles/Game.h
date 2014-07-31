@@ -39,7 +39,8 @@ private:
 	System m_system;
 	ResourceManager m_resources;
 	ParticleManager m_particleManager;
-	DebugCamera m_cam;
+	//DebugCamera m_cam;
+	Camera m_cam;
 };
 
 #endif
